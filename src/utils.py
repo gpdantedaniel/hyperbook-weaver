@@ -70,7 +70,6 @@ class TopicWeaver:
         # Helper modules
         self.model = StatelessEmbedder(model_name, inference_mode)
         self.keybert = KeyBERT(model=self.model)
-        self.count_vectorizer = CountVectorizer(max_df=0.80, min_df=0.0)
         self.naming_model = AzureChatOpenAI(azure_deployment='gpt-4o', temperature=0, api_version='2024-10-21') if naming_method else None
 
         self.clusterer = HDBSCAN(min_cluster_size=cluster_min, metric='euclidean')
