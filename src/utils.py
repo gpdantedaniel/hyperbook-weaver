@@ -288,7 +288,7 @@ class TopicWeaver:
 
         return G, kw2cluster
 
-    def display_graph(self, G):
+    def display_graph(self, G, filename):
         """
         Creates and returns a viewable
         graph as an HTML file.
@@ -302,14 +302,14 @@ class TopicWeaver:
 
         # Write it to a temporary file
         temp_dir = tempfile.gettempdir()
-        file_path = os.path.join(temp_dir, "topic_graph.html")
+        file_path = os.path.join(temp_dir, f"{filename}_topic_graph.html")
 
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(html_graph)
 
         return file_path
     
-    def assign_tags(self, titles, docs_keywords, kw2cluster, cluster_names):
+    def assign_tags(self, titles, docs_keywords, kw2cluster, cluster_names, filename):
         """
         Creates a dataframe consisting of the articles, their keywords and
         their topics. Useful for informing tag assignment.
@@ -328,7 +328,7 @@ class TopicWeaver:
 
         # Write the tags to a temporary file
         temp_dir = tempfile.gettempdir()
-        file_path = os.path.join(temp_dir, 'topic_tags.csv')
+        file_path = os.path.join(temp_dir, f'{filename}_topic_tags.csv')
 
         tags_df.to_csv(file_path, index=False)
 

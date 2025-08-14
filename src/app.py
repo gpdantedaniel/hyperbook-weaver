@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import gradio as gr
 from utils import TopicWeaver
@@ -24,6 +25,7 @@ available_models = {
     'ollama': {
         'name': 'Ollama models',
         'models': (
+            'hf.co/Qwen/Qwen3-Embedding-4B-GGUF:F16',
             'dengcao/Qwen3-Embedding-0.6B:Q8_0',
             'dengcao/Qwen3-Embedding-0.6B:F16',
             'dengcao/Qwen3-Embedding-4B:Q4_K_M',
@@ -45,6 +47,7 @@ def pipeline(csv_file, model_name, provider, cluster_min, top_n, chunk_size, nam
     # Extract content
     df = pd.read_csv(csv_file.name)
     docs, titles = df['content'], df['title']
+    filename = os.path.basename(csv_file.name)
 
     # Initialize progress bar and the Hyperbook Weaver
     progress = gr.Progress() 
@@ -78,10 +81,10 @@ def pipeline(csv_file, model_name, provider, cluster_min, top_n, chunk_size, nam
 
     # Step 5. Generate the graph and its HTML display
     G, kw2cluster = weaver.create_graph(cluster_map, cluster_names, titles, docs_keywords)
-    html_graph = weaver.display_graph(G)
+    html_graph = weaver.display_graph(G, filename)
 
     # Step 6. Give each article its tag
-    tags_df, tags_path = weaver.assign_tags(titles, docs_keywords, kw2cluster, cluster_names)
+    tags_df, tags_path = weaver.assign_tags(titles, docs_keywords, kw2cluster, cluster_names, filename)
 
     return fig2d, fig3d, html_graph, tags_df, tags_path
 
