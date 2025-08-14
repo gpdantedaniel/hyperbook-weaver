@@ -176,4 +176,5 @@ with gr.Blocks(title='Hyperbook Weaver 🕷️') as demo:
         outputs=[plot_2d, plot_3d, html_out, tags_df, tags_out]
     )
 
-demo.launch()
+if __name__ == "__main__":
+    demo.launch()
