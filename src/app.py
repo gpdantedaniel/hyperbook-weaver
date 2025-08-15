@@ -1,7 +1,12 @@
 import os
+import chromadb
+from uuid import uuid4
 import pandas as pd
 import gradio as gr
 from utils import TopicWeaver
+from langchain_community.document_loaders.csv_loader import CSVLoader
+from langchain_openai import AzureOpenAIEmbeddings
+from langchain_chroma.vectorstores import Chroma
 
 available_models = {
     'azure': {
@@ -36,6 +41,49 @@ available_models = {
 }
 
 weaver = None
+
+def split_list(input_list, chunk_size=5461):
+    for i in range(0, len(input_list), chunk_size):
+        yield input_list[i:i + chunk_size]
+
+def reindex_database(csv_file):
+    """A method that reindexes a database with specimens"""
+    try:
+
+        progress = gr.Progress()
+
+        vrmuseum_docs = CSVLoader(
+            file_path=csv_file.name,
+            content_columns=['content'],
+            metadata_columns=['title', 'specimen_name'],
+            encoding='utf-8'
+        ).load()
+        
+        embeddings = AzureOpenAIEmbeddings(
+            azure_deployment='text-embedding-3-large',
+            dimensions=1024
+        )
+
+        chroma_client = chromadb.CloudClient(
+            tenant=os.getenv('VRMUSEUM_CHROMA_TENANT'),
+            database=os.getenv('VRMUSEUM_CHROMA_DATABASE'),
+            api_key=os.getenv('VRMUSEUM_CHROMA_API_KEY')
+        )
+
+        vector_store = Chroma(
+            collection_name=os.getenv('VRMUSEUM_CHROMA_COLLECTION'), 
+            embedding_function=embeddings,
+            client=chroma_client
+        )
+
+        for batch_docs in progress.tqdm(split_list(vrmuseum_docs), desc='Adding entries'):
+            batch_ids = [str(uuid4()) for _ in range(len(vrmuseum_docs))]
+            vector_store.add_documents(documents=batch_docs, ids=batch_ids)
+
+        gr.Info("Your ChromaDB database was successfully rebuilt!", duration=5)
+
+    except Exception as e:
+        gr.Warning(f"An error occured: {e}", duration=10)
 
 def pipeline(csv_file, model_name, provider, cluster_min, top_n, chunk_size, naming_method):
     """
@@ -122,6 +170,12 @@ with gr.Blocks(title='Hyperbook Weaver 🕷️') as demo:
         gr.Markdown('## 🕸️ HTML graph file')
         html_out = gr.File(label='Download HTML', file_types=['.html'])
 
+    with gr.Tab(label='ChromaDB Database'):
+        gr.Markdown('## 🗃️ Rebuilding ChromaDB Database')
+        gr.Markdown('⚠️ The csv must have the following columns: <b>title</b>, <b>content</b> and <b>specimen_name</b>')
+        csv_in_chromadb = gr.File(label='CSV', file_types=['.csv'])
+        run_btn_chromadb = gr.Button('Process', variant='primary')
+
     with gr.Sidebar(width=400):
         gr.Markdown('## 📁 Data upload')
         gr.Markdown('⚠️ The csv must have the columns "<b>title</b>" and "<b>content</b>"')
@@ -174,6 +228,12 @@ with gr.Blocks(title='Hyperbook Weaver 🕷️') as demo:
         fn=pipeline, 
         inputs=[csv_in, model_name, provider, cluster_min, top_n, chunk_size, naming_method], 
         outputs=[plot_2d, plot_3d, html_out, tags_df, tags_out]
+    )
+
+    run_btn_chromadb.click(
+        fn=reindex_database,
+        inputs=[csv_in_chromadb],
+        outputs=[]
     )
 
 if __name__ == "__main__":
