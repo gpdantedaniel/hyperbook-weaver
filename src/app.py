@@ -98,7 +98,7 @@ def pipeline(csv_file, model_name, provider, cluster_min, top_n, chunk_size, nam
     progress = gr.Progress() 
     weaver = TopicWeaver(
         model_name=model_name, 
-        inference_mode=ffprovider, 
+        inference_mode=provider, 
         top_n=top_n, 
         cluster_min=cluster_min, 
         chunk_size=chunk_size,
