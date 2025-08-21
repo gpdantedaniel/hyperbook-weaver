@@ -23,19 +23,14 @@ available_models = {
             'Qwen/Qwen3-Embedding-0.6B',
             'Qwen/Qwen3-Embedding-4B',
             'Qwen/Qwen3-Embedding-8B',
-            'BAAI/bge-large-en-v1.5',
-            'intfloat/multilingual-e5-large-instruct'
         )
     },
     'ollama': {
         'name': 'Ollama models',
         'models': (
+            'hf.co/Qwen/Qwen3-Embedding-8B-GGUF:F16',
             'hf.co/Qwen/Qwen3-Embedding-4B-GGUF:F16',
-            'dengcao/Qwen3-Embedding-0.6B:Q8_0',
-            'dengcao/Qwen3-Embedding-0.6B:F16',
-            'dengcao/Qwen3-Embedding-4B:Q4_K_M',
-            'dengcao/Qwen3-Embedding-8B:Q4_K_M',
-            'dengcao/Qwen3-Embedding-8B:Q8_0'
+            'hf.co/Qwen/Qwen3-Embedding-0.6B-GGUF:F16'
         )
     }
 }
@@ -76,6 +71,8 @@ def reindex_database(csv_file):
             client=chroma_client
         )
 
+        vector_store.reset_collection() # Clear the collection for reindexings
+
         for batch_docs in progress.tqdm(split_list(vrmuseum_docs), desc='Adding entries'):
             batch_ids = [str(uuid4()) for _ in range(len(vrmuseum_docs))]
             vector_store.add_documents(documents=batch_docs, ids=batch_ids)
@@ -101,7 +98,7 @@ def pipeline(csv_file, model_name, provider, cluster_min, top_n, chunk_size, nam
     progress = gr.Progress() 
     weaver = TopicWeaver(
         model_name=model_name, 
-        inference_mode=provider, 
+        inference_mode=ffprovider, 
         top_n=top_n, 
         cluster_min=cluster_min, 
         chunk_size=chunk_size,

@@ -8,7 +8,6 @@ import pandas as pd
 import networkx as nx
 import numpy as np
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-import torch
 from jinja2 import Environment, FileSystemLoader
 import tempfile
 import os
@@ -155,15 +154,39 @@ class TopicWeaver:
         Names a cluster of keywords by finding the keyword
         closest to the centroid of the cluster or by generating names via an LLM call.
         """
-        def by_centroid():
-            embeddings = np.array([keyword_embeddings[kw] for kw in keywords])
-            embeddings = torch.from_numpy(embeddings)
 
-            # Calculate centroid and find the keyword closest to it
-            centroid = util.normalize_embeddings(embeddings.mean(dim=0, keepdim=True))
-            name_index = int(util.cos_sim(centroid, embeddings)[0].argmax())
-            name = keywords[name_index]
-            return name
+        def by_centroid():
+            # Create array of embeddings from keyword dictionary
+            embeddings = np.array([keyword_embeddings[kw] for kw in keywords])
+            
+            # Handle edge case: empty keyword list
+            if len(embeddings) == 0:
+                return None
+
+            # Compute centroid and its norm
+            centroid = np.mean(embeddings, axis=0)
+            centroid_norm = np.linalg.norm(centroid)
+            
+            # Handle zero centroid case
+            if centroid_norm < 1e-10:
+                return keywords[0]  # Arbitrary choice for undefined centroid
+            
+            # Normalize centroid
+            centroid_normalized = centroid / centroid_norm
+            
+            # Compute norms for each embedding
+            embedding_norms = np.linalg.norm(embeddings, axis=1)
+            
+            # Avoid division by zero for zero-norm embeddings
+            valid_norms = np.where(embedding_norms > 0, embedding_norms, 1)
+            
+            # Calculate cosine similarities using dot product
+            cosine_similarities = np.dot(embeddings, centroid_normalized) / valid_norms
+            
+            # Find index of maximum similarity
+            name_index = np.argmax(cosine_similarities)
+
+            return keywords[name_index]
         
         def by_generation():
             # Format the keywords into a prompt
